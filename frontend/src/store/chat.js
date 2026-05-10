@@ -10,36 +10,29 @@ export const useChatStore = defineStore('chat', {
     messages: [],
     unreadCounts: {},
     ws: null,
-    connected: false
+    connected: false,
+    _messageQueue: []
   }),
 
   actions: {
     async fetchFriends() {
       const res = await axios.get('/api/friend/list')
-      if (res.data.code === 200) {
-        this.friends = res.data.data
-      }
+      if (res.data.code === 200) this.friends = res.data.data
     },
 
     async fetchRequests() {
       const res = await axios.get('/api/friend/requests')
-      if (res.data.code === 200) {
-        this.friendRequests = res.data.data
-      }
+      if (res.data.code === 200) this.friendRequests = res.data.data
     },
 
     async fetchBlacklist() {
       const res = await axios.get('/api/friend/blacklist')
-      if (res.data.code === 200) {
-        this.blacklist = res.data.data
-      }
+      if (res.data.code === 200) this.blacklist = res.data.data
     },
 
     async sendFriendRequest(receiverId, remark) {
       const res = await axios.post('/api/friend/request', { receiverId, remark })
-      if (res.data.code !== 200) {
-        throw new Error(res.data.message)
-      }
+      if (res.data.code !== 200) throw new Error(res.data.message)
     },
 
     async handleRequest(requestId, accept) {
@@ -61,34 +54,23 @@ export const useChatStore = defineStore('chat', {
 
     async unblockUser(blockedUserId) {
       await axios.post(`/api/friend/unblock/${blockedUserId}`)
-      await Promise.all([
-        this.fetchBlacklist(),
-        this.fetchFriends()
-      ])
+      await Promise.all([this.fetchBlacklist(), this.fetchFriends()])
     },
 
     async fetchConversation(friendId) {
       const res = await axios.get(`/api/chat/conversation/${friendId}`)
-      if (res.data.code === 200) {
-        this.messages = res.data.data
-      }
+      if (res.data.code === 200) this.messages = res.data.data
     },
 
     async markAsRead(friendId) {
-      try {
-        await axios.post(`/api/chat/read/${friendId}`)
-      } catch (e) {
-        // 即使API失败也清除前端未读计数
-        console.warn('markAsRead API failed, clearing local count anyway', e)
-      }
+      try { await axios.post(`/api/chat/read/${friendId}`) }
+      catch (e) { console.warn('markAsRead failed', e) }
       this.unreadCounts[friendId] = 0
     },
 
     async fetchUnreadCounts() {
       const res = await axios.get('/api/chat/unread-counts')
-      if (res.data.code === 200) {
-        this.unreadCounts = res.data.data
-      }
+      if (res.data.code === 200) this.unreadCounts = res.data.data
     },
 
     connectWebSocket(userId) {
@@ -102,6 +84,10 @@ export const useChatStore = defineStore('chat', {
       this.ws.onopen = () => {
         this.connected = true
         console.log('WebSocket connected')
+        // 重连后刷新好友列表和未读计数，并发送队列中的消息
+        this.fetchFriends()
+        this.fetchUnreadCounts()
+        this._flushQueue()
       }
 
       this.ws.onmessage = event => {
@@ -112,7 +98,7 @@ export const useChatStore = defineStore('chat', {
       this.ws.onclose = () => {
         this.connected = false
         console.log('WebSocket disconnected')
-        setTimeout(() => this.connectWebSocket(userId), 3000)
+        setTimeout(() => this.connectWebSocket(userId), 2000)
       }
 
       this.ws.onerror = error => {
@@ -120,16 +106,32 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    _flushQueue() {
+      if (this._messageQueue.length > 0) {
+        const queue = [...this._messageQueue]
+        this._messageQueue = []
+        queue.forEach(msg => this._doSend(msg))
+      }
+    },
+
+    _doSend(msg) {
+      if (this.ws && this.connected) {
+        this.ws.send(JSON.stringify(msg))
+        return true
+      }
+      return false
+    },
+
     handleWsMessage(data) {
       switch (data.type) {
         case 'CHAT':
-          if (data.senderId === this.getCurrentUserId()) {
-            // 自己发的消息（通过其他设备/窗口），跳过
-            return
-          }
+          if (data.senderId === this.getCurrentUserId()) return
+          // 避免重复添加（可能通过 fetchConversation 已加载）
+          const exist = this.messages.find(m => m.id === data.id)
+          if (exist) return
           this.messages.push(data)
           if (this.currentChat && data.senderId === this.currentChat.friendId) {
-            this.unreadCounts[data.senderId] = 0  // 立即清零，不等异步
+            this.unreadCounts[data.senderId] = 0
             this.markAsRead(this.currentChat.friendId)
             this.sendReadReceipt(this.currentChat.friendId)
           } else {
@@ -137,25 +139,22 @@ export const useChatStore = defineStore('chat', {
           }
           break
         case 'CHAT_ACK':
-          // 替换乐观更新的临时消息为服务端确认的消息
           const ackIdx = this.messages.findIndex(m => m._temp === true)
           if (ackIdx !== -1) {
             this.messages[ackIdx] = { ...data, isRead: data.isRead || false }
           } else {
-            this.messages.push(data)
+            // 去重检查
+            const exist = this.messages.find(m => m.id === data.id)
+            if (!exist) this.messages.push(data)
           }
           break
         case 'MESSAGE_READ':
-          // readBy 表示谁已读，标记发送给该好友的消息为已读
           this.messages.forEach(m => {
             if (m.senderId === this.getCurrentUserId() && m.receiverId === data.readBy) {
               m.isRead = true
             }
           })
-          // 更新未读计数
-          if (this.unreadCounts[data.readBy]) {
-            this.unreadCounts[data.readBy] = 0
-          }
+          if (this.unreadCounts[data.readBy]) this.unreadCounts[data.readBy] = 0
           break
         case 'USER_STATUS':
           const friend = this.friends.find(f => f.friendId === data.userId)
@@ -164,11 +163,8 @@ export const useChatStore = defineStore('chat', {
             friend.lastOnlineTime = data.online ? null : new Date().toISOString()
           }
           break
-        case 'TYPING':
-          // Handle typing indicator
-          break
         case 'ERROR':
-          // Handle error (blocked message)
+          console.warn('WS Error:', data.message)
           break
       }
     },
@@ -179,55 +175,45 @@ export const useChatStore = defineStore('chat', {
     },
 
     sendMessage(receiverId, content) {
-      if (this.ws && this.connected) {
-        const clientId = 'c' + Date.now() + '-' + Math.random().toString(36).substr(2, 6)
-        // 乐观更新：立即在本地显示消息
-        const tempMsg = {
-          id: clientId,
-          _clientId: clientId,
-          senderId: this.getCurrentUserId(),
-          receiverId: receiverId,
-          content: content,
-          sendTime: new Date().toISOString(),
-          isRead: false,
-          _temp: true
-        }
-        this.messages.push(tempMsg)
+      const clientId = 'c' + Date.now() + '-' + Math.random().toString(36).substr(2, 6)
+      const userId = this.getCurrentUserId()
 
-        this.ws.send(JSON.stringify({
-          type: 'CHAT',
-          _clientId: clientId,
-          receiverId,
-          content
-        }))
+      // 乐观更新：立即在本地显示消息（无论 WS 是否连接）
+      const tempMsg = {
+        id: clientId,
+        _clientId: clientId,
+        senderId: userId,
+        receiverId: receiverId,
+        content: content,
+        sendTime: new Date().toISOString(),
+        isRead: false,
+        _temp: true
+      }
+      this.messages.push(tempMsg)
+
+      const wsMsg = { type: 'CHAT', _clientId: clientId, receiverId, content }
+
+      // 尝试发送，如果 WS 未连接则加入队列
+      if (!this._doSend(wsMsg)) {
+        this._messageQueue.push(wsMsg)
+        console.log('WS not connected, message queued')
       }
     },
 
     sendTyping(receiverId, isTyping) {
       if (this.ws && this.connected) {
-        this.ws.send(JSON.stringify({
-          type: 'TYPING',
-          receiverId,
-          isTyping
-        }))
+        this.ws.send(JSON.stringify({ type: 'TYPING', receiverId, isTyping }))
       }
     },
 
     sendReadReceipt(friendId) {
       if (this.ws && this.connected) {
-        this.ws.send(JSON.stringify({
-          type: 'MARK_READ',
-          friendId
-        }))
+        this.ws.send(JSON.stringify({ type: 'MARK_READ', friendId }))
       }
     },
 
     disconnectWebSocket() {
-      if (this.ws) {
-        this.ws.close()
-        this.ws = null
-        this.connected = false
-      }
+      if (this.ws) { this.ws.close(); this.ws = null; this.connected = false }
     }
   }
 })
