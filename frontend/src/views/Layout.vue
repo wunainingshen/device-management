@@ -1,26 +1,30 @@
 <template>
   <div class="layout-container">
+    <div class="layout-glow"></div>
     <el-container class="main-container">
-      <el-aside :width="isCollapse ? '64px' : '220px'" class="sidebar">
+      <el-aside :width="isCollapse ? '68px' : '240px'" class="sidebar">
         <div class="sidebar-header">
           <div class="logo" v-show="!isCollapse">
-            <el-icon :size="28" color="#409eff"><Monitor /></el-icon>
-            <span class="logo-text">设备管理</span>
+            <div class="logo-icon">
+              <el-icon :size="24"><Monitor /></el-icon>
+            </div>
+            <span class="logo-text">DeviceFlow</span>
           </div>
           <div class="logo-mini" v-show="isCollapse">
-            <el-icon :size="24" color="#409eff"><Monitor /></el-icon>
+            <div class="logo-icon">
+              <el-icon :size="22"><Monitor /></el-icon>
+            </div>
           </div>
         </div>
+
         <el-menu
           :default-active="activeMenu"
           :collapse="isCollapse"
           :collapse-transition="false"
           router
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409eff"
           class="sidebar-menu"
         >
+          <div class="menu-label" v-show="!isCollapse">导航</div>
           <el-menu-item index="/dashboard">
             <el-icon><Odometer /></el-icon>
             <span>首页</span>
@@ -31,10 +35,11 @@
             <span>个人信息</span>
           </el-menu-item>
 
+          <div class="menu-label" v-show="!isCollapse" v-if="authStore.isAdminUser" style="margin-top:8px">管理</div>
           <el-sub-menu index="admin" v-if="authStore.isAdminUser">
             <template #title>
               <el-icon><Setting /></el-icon>
-              <span>管理</span>
+              <span>管理控制台</span>
             </template>
             <el-menu-item index="/devices">
               <el-icon><Monitor /></el-icon>
@@ -46,11 +51,11 @@
             </el-menu-item>
           </el-sub-menu>
 
+          <div class="menu-label" v-show="!isCollapse" style="margin-top:8px">工具</div>
           <el-menu-item index="/chat">
             <el-icon><ChatDotRound /></el-icon>
             <span>在线聊天</span>
           </el-menu-item>
-
           <el-menu-item index="/ai">
             <el-icon><MagicStick /></el-icon>
             <span>AI 助手</span>
@@ -61,14 +66,10 @@
       <el-container>
         <el-header class="header">
           <div class="header-left">
-            <el-icon class="collapse-btn" @click="isCollapse = !isCollapse" :size="20">
+            <el-icon class="collapse-btn" @click="isCollapse = !isCollapse" :size="18">
               <Fold v-if="!isCollapse" />
               <Expand v-else />
             </el-icon>
-            <el-breadcrumb separator="/">
-              <el-breadcrumb-item :to="{ path: '/dashboard' }">首页</el-breadcrumb-item>
-              <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
-            </el-breadcrumb>
           </div>
           <div class="header-right">
             <el-badge :value="totalUnread" :hidden="totalUnread === 0" class="header-badge">
@@ -76,11 +77,15 @@
                 <ChatDotRound />
               </el-icon>
             </el-badge>
+            <div class="header-divider"></div>
             <el-dropdown trigger="click">
               <div class="user-info">
-                <el-avatar :size="32" :icon="UserFilled" class="user-avatar" />
-                <span class="username">{{ authStore.currentUser?.nickname || authStore.currentUser?.username }}</span>
-                <el-icon><ArrowDown /></el-icon>
+                <el-avatar :size="34" :icon="UserFilled" class="user-avatar" />
+                <div class="user-text">
+                  <span class="username">{{ authStore.currentUser?.nickname || authStore.currentUser?.username }}</span>
+                  <span class="user-role">{{ authStore.isAdminUser ? '管理员' : '用户' }}</span>
+                </div>
+                <el-icon class="chevron"><ArrowDown /></el-icon>
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -141,8 +146,6 @@ onMounted(() => {
     chatStore.fetchFriends()
     chatStore.fetchUnreadCounts()
   }
-
-  // 页面切换回前台时刷新未读计数
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
@@ -162,37 +165,73 @@ onUnmounted(() => {
 .layout-container {
   height: 100vh;
   overflow: hidden;
+  background: var(--bg-primary);
+  position: relative;
+}
+
+.layout-glow {
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 20% 50%, rgba(6, 182, 212, 0.03) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.02) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .main-container {
   height: 100%;
+  position: relative;
+  z-index: 1;
 }
 
+/* ===== 侧边栏 ===== */
 .sidebar {
-  background: var(--sidebar-bg);
-  transition: width 0.3s;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border-color);
+  transition: width var(--transition-normal);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
-  height: 60px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--primary-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .logo-text {
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
+  font-size: 18px;
+  font-weight: 800;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
 }
 
 .logo-mini {
@@ -201,74 +240,170 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+/* ===== 菜单 ===== */
 .sidebar-menu {
   border-right: none;
-  height: calc(100% - 60px);
+  flex: 1;
   overflow-y: auto;
+  background: transparent !important;
+  padding: 8px 12px;
 }
 
+.menu-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  padding: 16px 12px 6px;
+}
+
+.el-menu--collapse .menu-label {
+  display: none;
+}
+
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  border-radius: 8px !important;
+  margin: 2px 0;
+  color: var(--text-secondary) !important;
+  transition: all var(--transition-fast);
+}
+
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-primary) !important;
+}
+
+:deep(.el-menu-item.is-active) {
+  background: rgba(6, 182, 212, 0.12) !important;
+  color: var(--primary-light) !important;
+}
+
+:deep(.el-menu-item.is-active) .el-icon {
+  color: var(--primary-color) !important;
+}
+
+:deep(.el-sub-menu .el-menu) {
+  background: transparent !important;
+}
+
+:deep(.el-sub-menu .el-menu .el-menu-item) {
+  padding-left: 48px !important;
+}
+
+/* ===== 顶栏 ===== */
 .header {
-  background: var(--header-bg);
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  z-index: 10;
+  padding: 0 24px;
+  height: 64px !important;
+  flex-shrink: 0;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 15px;
 }
 
 .collapse-btn {
   cursor: pointer;
-  color: #606266;
+  color: var(--text-muted);
+  padding: 6px;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
 }
 
 .collapse-btn:hover {
   color: var(--primary-color);
+  background: rgba(6, 182, 212, 0.1);
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .header-badge :deep(.el-badge__content) {
-  background: #f56c6c;
+  background: var(--danger-color);
+  border: none;
+  font-size: 11px;
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 8px;
-  transition: background 0.3s;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: all var(--transition-fast);
 }
 
 .user-info:hover {
-  background: #f5f7fa;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.user-text {
+  display: flex;
+  flex-direction: column;
 }
 
 .username {
-  font-size: 14px;
-  color: #303133;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.user-role {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .user-avatar {
-  background: var(--primary-color);
+  background: var(--primary-gradient) !important;
+  border: 2px solid rgba(6, 182, 212, 0.3);
 }
 
+.chevron {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ===== 主内容 ===== */
 .main-content {
-  background: var(--bg-color);
-  padding: 20px;
+  background: transparent;
+  padding: 24px;
   overflow-y: auto;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 64px);
+}
+
+/* 主内容区域入口动画 */
+.main-content :deep(.el-card:first-child) {
+  animation: fadeSlideUp 0.5s ease-out;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

@@ -1,10 +1,22 @@
 <template>
   <div class="login-container">
+    <div class="login-bg">
+      <div class="bg-orb bg-orb-1"></div>
+      <div class="bg-orb bg-orb-2"></div>
+      <div class="bg-orb bg-orb-3"></div>
+      <div class="bg-grid"></div>
+    </div>
+
     <div class="login-card">
       <div class="login-header">
-        <h2>设备管理系统</h2>
-        <p>欢迎回来，请登录您的账户</p>
+        <div class="login-logo">
+          <div class="logo-icon"><el-icon :size="22"><Monitor /></el-icon></div>
+          <span>DeviceFlow</span>
+        </div>
+        <h2>欢迎回来</h2>
+        <p>登录到设备管理系统</p>
       </div>
+
       <el-tabs v-model="activeTab" class="login-tabs" :stretch="true">
         <el-tab-pane label="用户登录" name="user">
           <el-form ref="userFormRef" :model="userForm" :rules="rules" class="login-form">
@@ -30,13 +42,14 @@
               <el-input v-model="adminForm.password" type="password" placeholder="管理员密码" :prefix-icon="Lock" size="large" show-password />
             </el-form-item>
             <el-form-item>
-              <el-button type="danger" size="large" class="login-btn" @click="handleAdminLogin" :loading="loading">
+              <el-button size="large" class="login-btn admin-btn" @click="handleAdminLogin" :loading="loading">
                 管理员登录
               </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
       </el-tabs>
+
       <div class="login-footer">
         <span>还没有账户？</span>
         <router-link to="/register" class="register-link">立即注册</router-link>
@@ -55,7 +68,6 @@ import { useAuthStore } from '../store/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// 每次进入登录页先清除旧的缓存token
 onMounted(() => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
@@ -68,15 +80,8 @@ const loading = ref(false)
 const userFormRef = ref(null)
 const adminFormRef = ref(null)
 
-const userForm = reactive({
-  username: '',
-  password: ''
-})
-
-const adminForm = reactive({
-  username: '',
-  password: ''
-})
+const userForm = reactive({ username: '', password: '' })
+const adminForm = reactive({ username: '', password: '' })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -86,7 +91,6 @@ const rules = {
 const handleLogin = async () => {
   const valid = await userFormRef.value.validate().catch(() => false)
   if (!valid) return
-
   loading.value = true
   try {
     await authStore.login(userForm)
@@ -102,7 +106,6 @@ const handleLogin = async () => {
 const handleAdminLogin = async () => {
   const valid = await adminFormRef.value.validate().catch(() => false)
   if (!valid) return
-
   loading.value = true
   try {
     await authStore.login(adminForm)
@@ -127,114 +130,193 @@ const handleAdminLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
   position: relative;
   overflow: hidden;
 }
 
-.login-container::before {
-  content: '';
+/* ===== 背景效果 ===== */
+.login-bg {
   position: absolute;
-  width: 2000px;
-  height: 2000px;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bg-orb {
+  position: absolute;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-  top: -1000px;
-  right: -500px;
+  filter: blur(80px);
+  opacity: 0.4;
+}
+
+.bg-orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.15), transparent);
+  top: -200px;
+  right: -100px;
+  animation: float 20s ease-in-out infinite;
+}
+
+.bg-orb-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.1), transparent);
+  bottom: -150px;
+  left: -100px;
+  animation: float 25s ease-in-out infinite reverse;
+}
+
+.bg-orb-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.08), transparent);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   animation: float 15s ease-in-out infinite;
 }
 
-.login-container::after {
-  content: '';
+.bg-grid {
   position: absolute;
-  width: 1500px;
-  height: 1500px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
-  bottom: -800px;
-  left: -300px;
-  animation: float 20s ease-in-out infinite reverse;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
 @keyframes float {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  33% { transform: translate(30px, -30px) rotate(5deg); }
-  66% { transform: translate(-20px, 20px) rotate(-3deg); }
+  33% { transform: translate(30px, -30px) rotate(2deg); }
+  66% { transform: translate(-20px, 20px) rotate(-1deg); }
 }
 
+/* ===== 登录卡片 ===== */
 .login-card {
   width: 420px;
   padding: 40px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(20px);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 1;
-  animation: slideUp 0.6s ease-out;
+  animation: cardEnter 0.6s ease-out;
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
-.login-header h2 {
-  font-size: 28px;
-  color: #303133;
-  margin-bottom: 8px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+.login-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--primary-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.login-logo span {
+  font-size: 20px;
+  font-weight: 800;
+  background: var(--primary-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
+.login-header h2 {
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
 .login-header p {
-  color: #909399;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
+/* ===== 选项卡 ===== */
 .login-tabs {
   margin-bottom: 20px;
 }
 
 :deep(.el-tabs__item) {
-  font-size: 15px;
+  color: var(--text-muted) !important;
+  font-size: 14px;
   font-weight: 500;
 }
 
+:deep(.el-tabs__item.is-active) {
+  color: var(--primary-light) !important;
+}
+
+:deep(.el-tabs__active-bar) {
+  background: var(--primary-color) !important;
+}
+
+:deep(.el-tabs__nav-wrap::after) {
+  background: var(--border-color) !important;
+}
+
+/* ===== 登录表单 ===== */
 .login-form {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 :deep(.el-input__wrapper) {
-  padding: 4px 15px;
+  padding: 4px 16px;
+  height: 48px;
 }
 
 .login-btn {
   width: 100%;
-  height: 44px;
-  font-size: 16px;
-  border-radius: 10px;
-  margin-top: 10px;
+  height: 48px;
+  font-size: 15px;
+  border-radius: 10px !important;
+  margin-top: 8px;
+}
+
+.admin-btn {
+  background: linear-gradient(135deg, #f43f5e, #e11d48) !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+.admin-btn:hover {
+  box-shadow: 0 4px 20px rgba(244, 63, 94, 0.3) !important;
+  transform: translateY(-1px);
 }
 
 .login-footer {
   text-align: center;
-  color: #909399;
+  color: var(--text-muted);
   font-size: 14px;
+  margin-top: 4px;
 }
 
 .register-link {
-  color: var(--primary-color);
+  color: var(--primary-light);
   text-decoration: none;
-  font-weight: 500;
-  margin-left: 5px;
+  font-weight: 600;
 }
 
 .register-link:hover {

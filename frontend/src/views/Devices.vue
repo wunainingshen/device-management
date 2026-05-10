@@ -1,25 +1,25 @@
 <template>
   <div class="devices-page">
-    <el-card class="page-card" shadow="hover">
+    <el-card class="page-card" shadow="never">
       <template #header>
         <div class="page-header">
           <div class="header-left">
-            <el-icon :size="22" color="#409eff"><Monitor /></el-icon>
+            <div class="header-dot"></div>
             <span>设备管理</span>
+            <el-tag size="small" effect="dark" round>{{ devices.length }} 台</el-tag>
           </div>
           <div class="header-right">
-            <el-button type="primary" @click="showImportDialog" :icon="Upload">导入</el-button>
+            <el-button @click="showImportDialog" :icon="Upload">导入</el-button>
             <el-button type="success" @click="handleExport" :icon="Download">导出</el-button>
             <el-button type="primary" @click="openDialog(null)" :icon="Plus">添加设备</el-button>
           </div>
         </div>
       </template>
 
-      <!-- Search -->
       <div class="search-bar">
         <el-form :inline="true" :model="searchForm" class="search-form">
           <el-form-item label="设备名称">
-            <el-input v-model="searchForm.name" placeholder="搜索设备名称" clearable />
+            <el-input v-model="searchForm.name" placeholder="搜索设备名称" clearable :prefix-icon="Search" />
           </el-form-item>
           <el-form-item label="分类">
             <el-select v-model="searchForm.category" placeholder="选择分类" clearable style="width:150px">
@@ -45,25 +45,24 @@
         </el-form>
       </div>
 
-      <!-- Table -->
       <el-table :data="devices" stripe style="width: 100%" v-loading="loading" border>
         <el-table-column prop="id" label="ID" width="70" align="center" />
         <el-table-column prop="name" label="设备名称" min-width="150" />
         <el-table-column prop="model" label="型号" width="130" />
-        <el-table-column prop="category" label="分类" width="120" />
-        <el-table-column prop="brand" label="品牌" width="120" />
+        <el-table-column prop="category" label="分类" width="110" />
+        <el-table-column prop="brand" label="品牌" width="110" />
         <el-table-column prop="status" label="状态" width="110" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" effect="plain" round>
+            <el-tag :type="statusType(row.status)" effect="dark" round>
               {{ statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="location" label="位置" width="130" />
-        <el-table-column prop="purchaseDate" label="购买日期" width="120">
+        <el-table-column prop="location" label="位置" width="120" />
+        <el-table-column prop="purchaseDate" label="购买日期" width="110">
           <template #default="{ row }">{{ formatDate(row.purchaseDate) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column label="操作" width="170" fixed="right" align="center">
           <template #default="{ row }">
             <el-button size="small" type="primary" link @click="openDialog(row)">
               <el-icon><Edit /></el-icon> 编辑
@@ -76,9 +75,8 @@
       </el-table>
     </el-card>
 
-    <!-- Device Dialog -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="550px" :close-on-click-modal="false">
-      <el-form ref="deviceFormRef" :model="deviceForm" :rules="deviceRules" label-width="100px">
+      <el-form ref="deviceFormRef" :model="deviceForm" :rules="deviceRules" label-width="90px">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="设备名称" prop="name">
@@ -148,20 +146,15 @@
       </template>
     </el-dialog>
 
-    <!-- Import Dialog -->
     <el-dialog v-model="importVisible" title="导入设备数据" width="420px">
       <div class="import-content">
-        <el-upload
-          ref="uploadRef"
-          accept=".xlsx,.xls"
-          :auto-upload="false"
-          :show-file-list="true"
-          :limit="1"
-          :on-change="handleFileChange"
-        >
-          <el-button type="primary" :icon="Upload">选择Excel文件</el-button>
+        <el-icon :size="48" color="var(--text-muted)"><Upload /></el-icon>
+        <p style="margin:12px 0 20px;color:var(--text-muted)">选择 Excel 文件导入设备数据</p>
+        <el-upload ref="uploadRef" accept=".xlsx,.xls" :auto-upload="false" :show-file-list="true" :limit="1" :on-change="handleFileChange" drag>
+          <el-icon :size="32" color="var(--text-muted)"><Upload /></el-icon>
+          <p style="color:var(--text-muted);margin-top:8px">点击或拖拽文件到此处</p>
           <template #tip>
-            <p class="upload-tip">支持 .xlsx / .xls 格式的文件</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:8px">支持 .xlsx / .xls 格式</p>
           </template>
         </el-upload>
       </div>
@@ -189,58 +182,29 @@ const dialogTitle = ref('添加设备')
 const deviceFormRef = ref(null)
 const selectedFile = ref(null)
 
-const searchForm = reactive({
-  name: '',
-  category: '',
-  status: ''
-})
+const searchForm = reactive({ name: '', category: '', status: '' })
 
 const defaultForm = () => ({
-  name: '',
-  model: '',
-  category: '',
-  brand: '',
-  status: 'NORMAL',
-  description: '',
-  location: '',
-  purchaseDate: null,
-  warrantyExpiry: null
+  name: '', model: '', category: '', brand: '', status: 'NORMAL',
+  description: '', location: '', purchaseDate: null, warrantyExpiry: null
 })
 
 const deviceForm = reactive(defaultForm())
 const editingId = ref(null)
 
-const deviceRules = {
-  name: [{ required: true, message: '请输入设备名称', trigger: 'blur' }]
-}
+const deviceRules = { name: [{ required: true, message: '请输入设备名称', trigger: 'blur' }] }
 
-const statusType = (status) => {
-  const map = { NORMAL: 'success', FAULT: 'danger', MAINTENANCE: 'warning', SCRAPPED: 'info' }
-  return map[status] || 'info'
-}
-
-const statusLabel = (status) => {
-  const map = { NORMAL: '正常运行', FAULT: '故障', MAINTENANCE: '维护中', SCRAPPED: '已报废' }
-  return map[status] || status
-}
-
-const formatDate = (date) => {
-  if (!date) return '-'
-  return date.substring(0, 10)
-}
+const statusType = (s) => ({ NORMAL: 'success', FAULT: 'danger', MAINTENANCE: 'warning', SCRAPPED: 'info' }[s] || 'info')
+const statusLabel = (s) => ({ NORMAL: '正常运行', FAULT: '故障', MAINTENANCE: '维护中', SCRAPPED: '已报废' }[s] || s)
+const formatDate = (d) => d ? d.substring(0, 10) : '-'
 
 const fetchDevices = async () => {
   loading.value = true
   try {
     const res = await axios.get('/api/admin/devices')
-    if (res.data.code === 200) {
-      devices.value = res.data.data
-    }
-  } catch (e) {
-    ElMessage.error('获取设备列表失败')
-  } finally {
-    loading.value = false
-  }
+    if (res.data.code === 200) devices.value = res.data.data
+  } catch (e) { ElMessage.error('获取设备列表失败') }
+  finally { loading.value = false }
 }
 
 const searchDevices = async () => {
@@ -251,73 +215,37 @@ const searchDevices = async () => {
     if (searchForm.category) params.append('category', searchForm.category)
     if (searchForm.status) params.append('status', searchForm.status)
     const res = await axios.get(`/api/admin/devices/search?${params}`)
-    if (res.data.code === 200) {
-      devices.value = res.data.data
-    }
-  } catch (e) {
-    ElMessage.error('搜索失败')
-  } finally {
-    loading.value = false
-  }
+    if (res.data.code === 200) devices.value = res.data.data
+  } catch (e) { ElMessage.error('搜索失败') }
+  finally { loading.value = false }
 }
 
-const resetSearch = () => {
-  searchForm.name = ''
-  searchForm.category = ''
-  searchForm.status = ''
-  fetchDevices()
-}
+const resetSearch = () => { searchForm.name = ''; searchForm.category = ''; searchForm.status = ''; fetchDevices() }
 
 const openDialog = (device) => {
-  if (device) {
-    dialogTitle.value = '编辑设备'
-    editingId.value = device.id
-    Object.assign(deviceForm, device)
-  } else {
-    dialogTitle.value = '添加设备'
-    editingId.value = null
-    Object.assign(deviceForm, defaultForm())
-  }
+  if (device) { dialogTitle.value = '编辑设备'; editingId.value = device.id; Object.assign(deviceForm, device) }
+  else { dialogTitle.value = '添加设备'; editingId.value = null; Object.assign(deviceForm, defaultForm()) }
   dialogVisible.value = true
 }
 
 const saveDevice = async () => {
   const valid = await deviceFormRef.value.validate().catch(() => false)
   if (!valid) return
-
   saving.value = true
   try {
-    if (editingId.value) {
-      await axios.put(`/api/admin/devices/${editingId.value}`, deviceForm)
-      ElMessage.success('设备更新成功')
-    } else {
-      await axios.post('/api/admin/devices', deviceForm)
-      ElMessage.success('设备添加成功')
-    }
-    dialogVisible.value = false
-    fetchDevices()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '操作失败')
-  } finally {
-    saving.value = false
-  }
+    if (editingId.value) { await axios.put(`/api/admin/devices/${editingId.value}`, deviceForm); ElMessage.success('设备更新成功') }
+    else { await axios.post('/api/admin/devices', deviceForm); ElMessage.success('设备添加成功') }
+    dialogVisible.value = false; fetchDevices()
+  } catch (e) { ElMessage.error(e.response?.data?.message || '操作失败') }
+  finally { saving.value = false }
 }
 
 const handleDelete = async (id) => {
   try {
-    await ElMessageBox.confirm('确定要删除该设备吗？此操作不可撤销。', '确认删除', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm('确定要删除该设备吗？此操作不可撤销。', '确认删除', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
     await axios.delete(`/api/admin/devices/${id}`)
-    ElMessage.success('设备已删除')
-    fetchDevices()
-  } catch (e) {
-    if (e !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
+    ElMessage.success('设备已删除'); fetchDevices()
+  } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败') }
 }
 
 const handleExport = async () => {
@@ -325,50 +253,24 @@ const handleExport = async () => {
     const res = await axios.get('/api/device/export', { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([res.data]))
     const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `设备数据_${new Date().toISOString().slice(0,10)}.xlsx`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
-  } catch (e) {
-    ElMessage.error('导出失败')
-  }
+    link.href = url; link.setAttribute('download', `设备数据_${new Date().toISOString().slice(0,10)}.xlsx`)
+    document.body.appendChild(link); link.click(); link.remove()
+    window.URL.revokeObjectURL(url); ElMessage.success('导出成功')
+  } catch (e) { ElMessage.error('导出失败') }
 }
 
-const showImportDialog = () => {
-  selectedFile.value = null
-  importVisible.value = true
-}
-
-const handleFileChange = (file) => {
-  selectedFile.value = file.raw
-}
+const showImportDialog = () => { selectedFile.value = null; importVisible.value = true }
+const handleFileChange = (file) => { selectedFile.value = file.raw }
 
 const handleImport = async () => {
-  if (!selectedFile.value) {
-    ElMessage.warning('请选择文件')
-    return
-  }
-
+  if (!selectedFile.value) { ElMessage.warning('请选择文件'); return }
   importing.value = true
   try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-    const res = await axios.post('/api/device/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    if (res.data.code === 200) {
-      ElMessage.success(res.data.message)
-      importVisible.value = false
-      fetchDevices()
-    }
-  } catch (e) {
-    ElMessage.error('导入失败')
-  } finally {
-    importing.value = false
-  }
+    const formData = new FormData(); formData.append('file', selectedFile.value)
+    const res = await axios.post('/api/device/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    if (res.data.code === 200) { ElMessage.success(res.data.message); importVisible.value = false; fetchDevices() }
+  } catch (e) { ElMessage.error('导入失败') }
+  finally { importing.value = false }
 }
 
 onMounted(fetchDevices)
@@ -378,53 +280,34 @@ onMounted(fetchDevices)
 .devices-page {
   max-width: 1400px;
   margin: 0 auto;
+  animation: fadeSlideUp 0.5s ease-out;
 }
+@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
-.page-card {
-  border-radius: 12px;
-  border: none;
-}
+.page-card { border-radius: var(--radius-lg) !important; }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: flex; justify-content: space-between; align-items: center;
 }
 
 .header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 600;
+  display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: var(--text-primary);
 }
 
-.header-right {
-  display: flex;
-  gap: 10px;
+.header-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--primary-color);
 }
+
+.header-right { display: flex; gap: 8px; }
 
 .search-bar {
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  margin-bottom: 20px; padding: 16px 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
 }
 
-.search-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+.search-form { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.import-content {
-  text-align: center;
-  padding: 30px;
-}
-
-.upload-tip {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 8px;
-}
+.import-content { text-align: center; padding: 20px; }
 </style>
