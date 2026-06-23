@@ -19,6 +19,9 @@ public class DeepSeekService {
     @Value("${app.deepseek.api-url}")
     private String apiUrl;
 
+    @Value("${app.deepseek.model}")
+    private String model;
+
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -43,7 +46,7 @@ public class DeepSeekService {
         messages.add(userMsg);
 
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "deepseek-chat");
+        requestBody.put("model", model);
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.7);
         requestBody.put("max_tokens", 2000);

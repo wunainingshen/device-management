@@ -24,8 +24,9 @@ app:
     secret: DeviceManagementSecretKey2024VeryLongAndSecureKey
     expiration: 86400000
   deepseek:
-    api-key: sk-92fd34c1044541d18e481b0c171df138
-    api-url: https://api.deepseek.com/v1/chat/completions
+    api-key: tp-c5o7srk95o9fup5z91xwp9qk6wfsyjkk5li0x8u89p7mfoio
+    api-url: https://token-plan-cn.xiaomimimo.com/v1/chat/completions
+    model: mimo-v2.5-pro
 
 logging:
   level:
