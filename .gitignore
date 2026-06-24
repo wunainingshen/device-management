@@ -8,6 +8,7 @@ target/
 # Node
 node_modules/
 dist/
+package-lock.json
 
 # IDE
 .idea/
